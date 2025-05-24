@@ -31,3 +31,13 @@ build/
 
 ### VS Code ###
 .vscode/
+/**/* .log
+
+# Ignore all .log files
+*.log
+
+# Ignore everything in the data folder
+data/*
+
+# Allow .yaml files in the data folder and its subdirectories
+!data/**/*.yaml
