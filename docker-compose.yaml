@@ -1,0 +1,85 @@
+services:
+  postgres:
+    container_name: postgres
+    image: postgres:17-alpine
+    volumes:
+      - ./data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: condensr
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 3
+    expose:
+      - "5432"
+    ports:
+      - "5433:5432"
+
+  grafana:
+    image: grafana/grafana-oss:12.0.0
+    container_name: grafana
+    restart: unless-stopped
+    user: "0"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_DOMAIN: localhost
+      GF_LOG_MODE: console,file
+      GF_LOG_FILTERS: alerting.notifier.slack:debug alertmanager:debug ngalert:debug
+
+  prometheus:
+    image: prom/prometheus:v2.53.4
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./data/prometheus/config:/etc/prometheus/
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yaml"
+    ports:
+      - "9090:9090"
+
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/loki-config.yaml
+    volumes:
+      - ./data/loki/config:/etc/loki/
+
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: promtail
+    volumes:
+      - ./data/promtail/config/:/etc/promtail/
+      - condensr-logs:/tmp/
+    command: -config.file=/etc/promtail/promtail.yaml
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: condensr
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/condensr
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+    depends_on:
+      - postgres
+    volumes:
+      - condensr-logs:/tmp/
+
+volumes:
+  condensr-logs:

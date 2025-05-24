@@ -24,7 +24,7 @@ public class PostGresController {
     // CREATE
     @PostMapping
     public ResponseEntity<String> createItem(@RequestBody Item item) {
-    	log.info("Inside createItems");
+    	log.warn("Inside createItems");
         itemRepository.save(item);
         return ResponseEntity.ok("Item created");
     }
